@@ -1,6 +1,11 @@
 import type { USyncQueryProtocol } from '../../Types/USync'
 import { assertNodeErrorFree, type BinaryNode } from '../../WABinary'
-import { USyncUser } from '../USyncUser'
+
+export type UsernameData = {
+	username?: string
+	lid?: string
+	isDeleted?: boolean
+}
 
 export class USyncUsernameProtocol implements USyncQueryProtocol {
 	name = 'username'
@@ -12,15 +17,19 @@ export class USyncUsernameProtocol implements USyncQueryProtocol {
 		}
 	}
 
-	getUserElement(user: USyncUser): BinaryNode | null {
-		void user
+	getUserElement(): null {
 		return null
 	}
 
-	parser(node: BinaryNode): string | null {
+	parser(node: BinaryNode): UsernameData | null {
 		if (node.tag === 'username') {
 			assertNodeErrorFree(node)
-			return typeof node.content === 'string' ? node.content : null
+			const username = typeof node.content === 'string' ? node.content : node.attrs.username || node.attrs.val
+			return {
+				username: username || undefined,
+				lid: node.attrs.lid,
+				isDeleted: node.attrs['is_username_deleted'] === 'true' || node.attrs.deleted === 'true'
+			}
 		}
 
 		return null

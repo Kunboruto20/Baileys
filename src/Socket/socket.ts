@@ -58,7 +58,7 @@ import {
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { BinaryInfo } from '../WAM/BinaryInfo.js'
-import { USyncQuery, USyncUser } from '../WAUSync/'
+import { type UsernameData, USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
 import { executeWMexQuery } from './mex.js'
 
@@ -352,6 +352,41 @@ export const makeSocket = (config: SocketConfig) => {
 		if (results) {
 			return results.list.filter(a => !!a.contact).map(({ contact, id }) => ({ jid: id, exists: contact as boolean }))
 		}
+	}
+
+	type OnWhatsAppUsernameResult = {
+		jid: string
+		exists: boolean
+		username?: UsernameData
+	}
+
+	const onWhatsAppUsername = async (...usernameOrUri: string[]): Promise<OnWhatsAppUsernameResult[]> => {
+		const usyncQuery = new USyncQuery().withContactProtocol().withUsernameProtocol()
+
+		for (const usernameUri of usernameOrUri) {
+			const user = new USyncUser().withUsernameUri(usernameUri)
+			if (user.username) {
+				usyncQuery.withUser(user)
+			}
+		}
+
+		if (usyncQuery.users.length === 0) {
+			return []
+		}
+
+		const results = await executeUSyncQuery(usyncQuery)
+
+		if (results) {
+			return results.list
+				.filter(a => !!a.contact)
+				.map(({ contact, id, username }) => ({
+					jid: id,
+					exists: contact as boolean,
+					username: username as UsernameData | undefined
+				}))
+		}
+
+		return []
 	}
 
 	const pnFromLIDUSync = async (jids: string[]): Promise<LIDMapping[] | undefined> => {
@@ -1184,6 +1219,7 @@ export const makeSocket = (config: SocketConfig) => {
 		sendWAMBuffer,
 		executeUSyncQuery,
 		onWhatsApp,
+		onWhatsAppUsername,
 		fetchAccountReachoutTimelock,
 		fetchNewChatMessageCap
 	}
